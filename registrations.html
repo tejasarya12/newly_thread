@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directory | Support.AI</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0a0a0a',
+                        light: '#F5F5F7',
+                        gold: '#D4AF37',
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Manrope', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+</head>
+<body class="font-body bg-light dark:bg-dark text-gray-900 dark:text-white transition-colors duration-500">
+
+    <button id="themeToggle" class="fixed top-6 right-6 z-[100] w-12 h-12 rounded-full border border-gray-200 dark:border-white/10 flex items-center justify-center hover:scale-110 transition-transform bg-white/50 dark:bg-black/50 backdrop-blur-md">
+        <svg class="w-5 h-5 dark:hidden text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <svg class="w-5 h-5 hidden dark:block text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    </button>
+
+    <nav class="fixed top-0 w-full z-50 bg-light/90 dark:bg-dark/90 backdrop-blur-md border-b border-gray-200 dark:border-white/5 px-8 py-5 flex justify-between items-center">
+        <a href="/" class="text-xl font-display font-bold uppercase tracking-tighter hover:text-gold transition-colors">
+            Support<span class="text-gold">.AI</span>
+        </a>
+        <a href="/register" class="text-[10px] font-bold uppercase tracking-[0.2em] border border-gray-300 dark:border-white/20 px-6 py-3 hover:bg-gold hover:text-black hover:border-gold transition-all duration-300">
+            Register New
+        </a>
+    </nav>
+
+    <header class="pt-48 pb-20 px-6 text-center relative overflow-hidden">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20vw] font-display font-bold text-gray-200 dark:text-white/[0.02] pointer-events-none select-none">
+            ROSTER
+        </div>
+
+        <div class="relative z-10">
+            <h1 class="text-6xl md:text-8xl font-display font-bold uppercase mb-6 opacity-0 animate-title">The Roster</h1>
+            <p class="text-gray-500 uppercase tracking-[0.3em] text-xs md:text-sm opacity-0 animate-title max-w-lg mx-auto">
+                Active Neural Networks currently serving global clientele.
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 pb-32">
+        <div id="companyGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="col-span-full flex flex-col items-center justify-center py-20 gap-4">
+                <div class="w-12 h-12 border border-gray-300 dark:border-white/10 border-t-gold rounded-full animate-spin"></div>
+                <div class="text-gray-400 font-mono text-xs uppercase tracking-widest animate-pulse">
+                    Retrieving Database...
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Smooth Scroll
+        const lenis = new Lenis();
+        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+        requestAnimationFrame(raf);
+
+        // Theme Logic
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        // Data Fetching
+        document.addEventListener('DOMContentLoaded', async () => {
+            gsap.registerPlugin(ScrollTrigger);
+            gsap.to(".animate-title", { opacity: 1, y: 0, stagger: 0.2, duration: 1.2, ease: "power2.out" });
+
+            const grid = document.getElementById('companyGrid');
+            try {
+                const res = await fetch('/api/companies');
+                const data = await res.json();
+
+                if(data.status === 'success' && data.companies.length) {
+                    grid.innerHTML = data.companies.map(c => `
+                        <div class="company-card opacity-0 bg-white dark:bg-[#0f0f0f] p-10 relative group transition-all duration-500 overflow-hidden cursor-pointer min-h-[300px] flex flex-col justify-between shadow-sm hover:shadow-2xl border border-gray-100 dark:border-transparent">
+                            
+                            <div class="absolute inset-0 border border-gold opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-20"></div>
+                            
+                            <div class="absolute inset-0 border border-transparent dark:border-white/5 pointer-events-none z-10"></div>
+                            
+                            <div class="absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                            <div class="relative z-30 flex justify-between items-start">
+                                <div class="text-6xl font-display font-bold text-gray-200 dark:text-white/10 group-hover:text-gold/20 dark:group-hover:text-white/20 transition-colors duration-500">
+                                    ${c.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+                                    <span class="text-[10px] uppercase tracking-widest text-gray-400 dark:text-white/40">Online</span>
+                                </div>
+                            </div>
+
+                            <div class="relative z-30 mt-auto">
+                                <h3 class="text-3xl font-display uppercase font-medium mb-2 text-gray-900 dark:text-white group-hover:text-gold transition-colors duration-300 leading-none">
+                                    ${c.name}
+                                </h3>
+                                <p class="text-xs text-gray-500 font-mono mb-6 uppercase tracking-wider group-hover:text-gray-800 dark:group-hover:text-white/60 transition-colors">
+                                    ${c.product_name}
+                                </p>
+                                
+                                <div class="border-t border-gray-100 dark:border-white/10 pt-6 flex flex-col gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                    <div class="flex justify-between">
+                                        <span>Docs</span>
+                                        <span class="text-gray-900 dark:text-gray-300">${c.doc_count || 1}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Updated</span>
+                                        <span class="text-gray-900 dark:text-gray-300">${new Date(c.last_updated.split('_')[0].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="/?company=${encodeURIComponent(c.name)}" class="absolute inset-0 z-40"></a>
+                        </div>
+                    `).join('');
+
+                    gsap.to(".company-card", {
+                        opacity: 1, y: 0, duration: 1, stagger: 0.1, ease: "power3.out",
+                        scrollTrigger: { trigger: grid, start: "top 85%" }
+                    });
+                } else {
+                    grid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-32 border border-gray-200 dark:border-white/5"><h2 class="text-2xl font-display uppercase mb-2">Database Empty</h2></div>`;
+                }
+            } catch (e) {
+                grid.innerHTML = `<div class="col-span-full text-center text-red-500 py-20 font-mono text-xs">CONNECTION_ERROR</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Support | Real-Time</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;700&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { dark: '#0a0a0a', light: '#F5F5F7', gold: '#D4AF37', brand: '#6366f1' },
+                    fontFamily: { display: ['Oswald', 'sans-serif'], body: ['Manrope', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+    <style>
+        body { transition: background-color 0.5s ease, color 0.5s ease; }
+        .glass-panel { backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .dark .glass-panel { background: rgba(20, 20, 20, 0.6); }
+        .light .glass-panel { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(0,0,0,0.1); }
+        .mic-btn { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); transition: all 0.3s; }
+        .mic-btn.listening { box-shadow: 0 0 50px rgba(212, 175, 55, 0.8); transform: scale(1.2); background: #D4AF37; color: black; }
+    </style>
+</head>
+<body class="font-body bg-light dark:bg-dark text-gray-900 dark:text-gray-100 selection:bg-gold selection:text-black overflow-x-hidden">
+
+    <button id="themeToggle" class="fixed top-6 right-6 z-[100] w-12 h-12 rounded-full glass-panel flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
+        <svg class="w-5 h-5 dark:hidden text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <svg class="w-5 h-5 hidden dark:block text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    </button>
+
+    <nav class="fixed top-0 w-full z-50 py-6 px-8 flex justify-between items-center mix-blend-difference text-white">
+        <div class="text-2xl font-display font-bold tracking-tighter uppercase">Support<span class="text-gold">.AI</span></div>
+        <div class="flex gap-8 text-sm font-bold tracking-widest uppercase">
+            <a href="/register" class="hover:text-gold transition-colors">Register</a>
+            <a href="/registrations" class="hover:text-gold transition-colors">Directory</a>
+        </div>
+    </nav>
+
+    <div id="smooth-wrapper">
+        <div id="smooth-content">
+            <section class="h-screen flex flex-col justify-center items-center relative px-4 overflow-hidden">
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 dark:opacity-20">
+                    <h1 class="text-[25vw] font-display font-bold text-transparent" style="-webkit-text-stroke: 1px rgba(128,128,128,0.2);">GENIE</h1>
+                </div>
+                <div class="relative z-10 text-center space-y-8 max-w-5xl">
+                    <p class="text-gold tracking-[0.3em] text-sm uppercase font-bold reveal-text">Real-Time Voice Architecture</p>
+                    <h1 class="text-6xl md:text-9xl font-display font-bold uppercase leading-[0.9] reveal-text">
+                        Intelligence <br> <span class="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600 dark:from-white dark:via-gray-400 dark:to-gray-600">Redefined</span>
+                    </h1>
+                </div>
+            </section>
+
+            <section class="min-h-screen flex items-center justify-center relative py-20 bg-gray-100 dark:bg-[#0c0c0c] transition-colors">
+                <div class="w-full max-w-4xl px-4 relative z-20">
+                    <div class="glass-panel rounded-none p-1 chat-container opacity-0 translate-y-20 shadow-2xl">
+                        <div class="bg-white/80 dark:bg-black/40 p-8 md:p-12 border border-gray-200 dark:border-white/5 relative overflow-hidden transition-colors">
+                            
+                            <div class="flex justify-between items-center mb-6 text-xs font-mono tracking-widest text-gray-400">
+                                <div id="connectionStatus">🔴 OFFLINE</div>
+                                <div>MODE: REAL-TIME STREAM</div>
+                            </div>
+
+                            <div id="responseSection" class="hidden mb-8 border-l-2 border-gold pl-4 transition-all duration-300">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="text-xs font-bold text-gold">SYSTEM RESPONSE</div>
+                                    <button id="stopVoiceBtn" class="hidden text-xs text-red-500 font-bold hover:text-red-400 uppercase tracking-widest border border-red-500/30 px-2 py-1 rounded">STOP VOICE</button>
+                                </div>
+                                <p id="answerText" class="text-lg font-light leading-relaxed text-gray-800 dark:text-gray-200 font-display"></p>
+                            </div>
+
+                            <textarea id="queryInput" class="w-full bg-transparent border-b border-gray-300 dark:border-white/20 text-3xl font-display font-light text-gray-900 dark:text-white placeholder-gray-400 py-4 focus:outline-none focus:border-gold transition-colors resize-none h-32" placeholder="Start speaking..."></textarea>
+
+                            <div class="flex justify-between items-center mt-8">
+                                <div class="text-xs font-bold text-gold" id="activityStatus">Waiting for input...</div>
+                                <button id="submitBtn" type="button" class="bg-black dark:bg-white text-white dark:text-black px-8 py-3 font-bold font-display uppercase tracking-wider hover:bg-gold hover:text-black transition-all">EXECUTE</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fixed bottom-10 right-10 z-50 mic-wrapper">
+                    <button id="voiceBtn" class="mic-btn w-20 h-20 rounded-full bg-[#1a1a1a] dark:bg-white text-gold dark:text-black flex items-center justify-center cursor-pointer group relative">
+                        <svg class="w-8 h-8 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let audioContext, processor, input, globalStream;
+        const voiceBtn = document.getElementById('voiceBtn');
+        const statusText = document.getElementById('activityStatus');
+        const queryInput = document.getElementById('queryInput');
+        const answerText = document.getElementById('answerText');
+        const responseSection = document.getElementById('responseSection');
+        const stopVoiceBtn = document.getElementById('stopVoiceBtn');
+
+        let fullAnswer = "";
+        let synthesis = window.speechSynthesis;
+
+        // Socket Events
+        socket.on('connect', () => {
+            document.getElementById('connectionStatus').textContent = "🟢 ONLINE";
+            document.getElementById('connectionStatus').classList.add('text-green-500');
+        });
+
+        // 1. Receive User Transcript
+        socket.on('user_transcript', (data) => {
+            queryInput.value = data.text;
+            statusText.textContent = "User: " + data.text;
+        });
+
+        // 2. Receive AI Response (Streaming)
+        socket.on('ai_response_chunk', (data) => {
+            responseSection.classList.remove('hidden');
+            fullAnswer += data.text;
+            answerText.textContent = fullAnswer;
+            
+            // Try to speak full sentences as they arrive
+            // Simplified: Speak the whole buffer if it contains punctuation
+            if (['.', '!', '?'].some(char => data.text.includes(char))) {
+               speakText(fullAnswer);
+               // Note: This simple approach might re-read parts if not careful. 
+               // For a robust agent, we usually wait for full response or queue sentences.
+               // Since we want simple logic here:
+            }
+        });
+        
+        // Listen for end of turn to speak the full response cleanly
+        // (Assuming backend sends a signal, or we just rely on the stream)
+        
+        function speakText(text) {
+            if (synthesis.speaking) {
+                synthesis.cancel();
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.1; // Slightly faster
+            utterance.pitch = 1.0;
+            utterance.onstart = () => stopVoiceBtn.classList.remove('hidden');
+            utterance.onend = () => stopVoiceBtn.classList.add('hidden');
+            synthesis.speak(utterance);
+        }
+
+        stopVoiceBtn.addEventListener('click', () => {
+            synthesis.cancel();
+            stopVoiceBtn.classList.add('hidden');
+        });
+
+        // Audio Streaming Logic
+        async function startStreaming() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                input = audioContext.createMediaStreamSource(globalStream);
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+                input.connect(processor);
+                processor.connect(audioContext.destination);
+                processor.onaudioprocess = (e) => {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const pcmData = floatTo16BitPCM(inputData);
+                    socket.emit('audio_stream', pcmData);
+                };
+                voiceBtn.classList.add('listening');
+                statusText.textContent = "LISTENING...";
+                // Clear previous answer on new speech
+                fullAnswer = "";
+                answerText.textContent = ""; 
+            } catch (err) {
+                console.error(err);
+                alert("Microphone denied");
+            }
+        }
+
+        function stopStreaming() {
+            if (globalStream) {
+                globalStream.getTracks().forEach(track => track.stop());
+                input.disconnect();
+                processor.disconnect();
+                audioContext.close();
+                voiceBtn.classList.remove('listening');
+                statusText.textContent = "PROCESSING...";
+            }
+        }
+
+        function floatTo16BitPCM(input) {
+            let output = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+                let s = Math.max(-1, Math.min(1, input[i]));
+                output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            return output.buffer;
+        }
+
+        let isRecording = false;
+        voiceBtn.addEventListener('click', () => {
+            if (!isRecording) { startStreaming(); isRecording = true; } 
+            else { stopStreaming(); isRecording = false; }
+        });
+
+        // Manual Submit Logic
+        document.getElementById('submitBtn').addEventListener('click', async () => {
+            const query = queryInput.value;
+            if(!query) return;
+            
+            fullAnswer = "";
+            answerText.textContent = "";
+            responseSection.classList.remove('hidden');
+            statusText.textContent = "MANUAL QUERY SENT...";
+
+            const res = await fetch('/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: query})
+            });
+        });
+
+        // Design
+        gsap.registerPlugin(ScrollTrigger);
+        const lenis = new Lenis({ duration: 1.2, smooth: true });
+        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+        requestAnimationFrame(raf);
+        
+        gsap.to(".chat-container", { y: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.5 });
+        
+        const toggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) html.classList.add('dark');
+        toggle.addEventListener('click', () => { html.classList.toggle('dark'); localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light'; });
+    </script>
+</body>
+</html>
