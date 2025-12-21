@@ -23,20 +23,46 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
     <style>
-        body { transition: background-color 0.5s ease, color 0.5s ease; }
+        body { transition: background-color 0.5s ease, color 0.5s ease; overflow-x: hidden; }
         .glass-panel { backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .dark .glass-panel { background: rgba(20, 20, 20, 0.6); }
         .light .glass-panel { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(0,0,0,0.1); }
-        .mic-btn { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); transition: all 0.3s; }
-        .mic-btn.listening { box-shadow: 0 0 50px rgba(212, 175, 55, 0.8); transform: scale(1.2); background: #D4AF37; color: black; }
+        
+        /* Magnetic Mic Styles */
+        .mic-wrapper {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            transition: transform 0.1s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .mic-btn {
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+            transition: all 0.3s;
+        }
+        .mic-btn.listening {
+            box-shadow: 0 0 50px rgba(212, 175, 55, 0.8);
+            transform: scale(1.2);
+            background: #D4AF37;
+            color: black;
+        }
+
+        /* Ambient Background */
+        .ambient-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05), transparent 70%);
+            opacity: 0.6;
+            transition: background 0.2s ease;
+        }
     </style>
 </head>
-<body class="font-body bg-light dark:bg-dark text-gray-900 dark:text-gray-100 selection:bg-gold selection:text-black overflow-x-hidden">
+<body class="font-body bg-light dark:bg-dark text-gray-900 dark:text-gray-100 selection:bg-gold selection:text-black">
 
-    <button id="themeToggle" class="fixed top-6 right-6 z-[100] w-12 h-12 rounded-full glass-panel flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-        <svg class="w-5 h-5 dark:hidden text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-        <svg class="w-5 h-5 hidden dark:block text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-    </button>
+    <div class="ambient-bg" id="ambientBg"></div>
 
     <nav class="fixed top-0 w-full z-50 py-6 px-8 flex justify-between items-center mix-blend-difference text-white">
         <div class="text-2xl font-display font-bold tracking-tighter uppercase">Support<span class="text-gold">.AI</span></div>
@@ -45,6 +71,11 @@
             <a href="/registrations" class="hover:text-gold transition-colors">Directory</a>
         </div>
     </nav>
+
+    <button id="themeToggle" class="fixed top-6 right-6 z-[100] w-12 h-12 rounded-full glass-panel flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
+        <svg class="w-5 h-5 dark:hidden text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <svg class="w-5 h-5 hidden dark:block text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    </button>
 
     <div id="smooth-wrapper">
         <div id="smooth-content">
@@ -88,7 +119,7 @@
                     </div>
                 </div>
 
-                <div class="fixed bottom-10 right-10 z-50 mic-wrapper">
+                <div class="mic-wrapper">
                     <button id="voiceBtn" class="mic-btn w-20 h-20 rounded-full bg-[#1a1a1a] dark:bg-white text-gold dark:text-black flex items-center justify-center cursor-pointer group relative">
                         <svg class="w-8 h-8 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                     </button>
@@ -99,16 +130,46 @@
 
     <script>
         const socket = io();
-        let audioContext, processor, input, globalStream;
         const voiceBtn = document.getElementById('voiceBtn');
         const statusText = document.getElementById('activityStatus');
         const queryInput = document.getElementById('queryInput');
         const answerText = document.getElementById('answerText');
         const responseSection = document.getElementById('responseSection');
         const stopVoiceBtn = document.getElementById('stopVoiceBtn');
-
-        let fullAnswer = "";
+        
+        let audioContext, processor, input, globalStream;
+        let fullAnswer = "", spokenText = "";
         let synthesis = window.speechSynthesis;
+
+        // --- MAGNETIC BUTTON LOGIC ---
+        const micWrapper = document.querySelector('.mic-wrapper');
+        const micBtn = document.querySelector('.mic-btn');
+        
+        document.addEventListener('mousemove', (e) => {
+            // Background Effect
+            const bg = document.getElementById('ambientBg');
+            bg.style.background = `radial-gradient(circle at ${e.clientX}px ${e.clientY}px, rgba(212, 175, 55, 0.08), transparent 50%)`;
+
+            // Magnetic Button Logic
+            const rect = micWrapper.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const distX = e.clientX - centerX;
+            const distY = e.clientY - centerY;
+            const dist = Math.sqrt(distX*distX + distY*distY);
+            
+            // Only magnetize if within 150px
+            if (dist < 150) {
+                gsap.to(micWrapper, {
+                    x: distX * 0.2, // Movement strength
+                    y: distY * 0.2,
+                    duration: 0.3,
+                    ease: "power2.out"
+                });
+            } else {
+                gsap.to(micWrapper, { x: 0, y: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
+            }
+        });
 
         // Socket Events
         socket.on('connect', () => {
@@ -116,40 +177,36 @@
             document.getElementById('connectionStatus').classList.add('text-green-500');
         });
 
-        // 1. Receive User Transcript
         socket.on('user_transcript', (data) => {
             queryInput.value = data.text;
             statusText.textContent = "User: " + data.text;
         });
 
-        // 2. Receive AI Response (Streaming)
         socket.on('ai_response_chunk', (data) => {
             responseSection.classList.remove('hidden');
             fullAnswer += data.text;
             answerText.textContent = fullAnswer;
-            
-            // Try to speak full sentences as they arrive
-            // Simplified: Speak the whole buffer if it contains punctuation
-            if (['.', '!', '?'].some(char => data.text.includes(char))) {
-               speakText(fullAnswer);
-               // Note: This simple approach might re-read parts if not careful. 
-               // For a robust agent, we usually wait for full response or queue sentences.
-               // Since we want simple logic here:
-            }
+            speakNewSentences();
         });
-        
-        // Listen for end of turn to speak the full response cleanly
-        // (Assuming backend sends a signal, or we just rely on the stream)
-        
-        function speakText(text) {
-            if (synthesis.speaking) {
-                synthesis.cancel();
+
+        function speakNewSentences() {
+            const newText = fullAnswer.substring(spokenText.length);
+            const match = newText.match(/[.!?]+(\s|$)/g);
+            if (match) {
+                const lastPunctIndex = Math.max(newText.lastIndexOf('.'), newText.lastIndexOf('!'), newText.lastIndexOf('?'));
+                if (lastPunctIndex !== -1) {
+                    const sentenceToSpeak = newText.substring(0, lastPunctIndex + 1);
+                    spokenText += sentenceToSpeak;
+                    speakText(sentenceToSpeak);
+                }
             }
+        }
+
+        function speakText(text) {
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.1; // Slightly faster
-            utterance.pitch = 1.0;
+            utterance.rate = 1.1; 
             utterance.onstart = () => stopVoiceBtn.classList.remove('hidden');
-            utterance.onend = () => stopVoiceBtn.classList.add('hidden');
+            utterance.onend = () => { if(!synthesis.pending) stopVoiceBtn.classList.add('hidden'); };
             synthesis.speak(utterance);
         }
 
@@ -158,8 +215,10 @@
             stopVoiceBtn.classList.add('hidden');
         });
 
-        // Audio Streaming Logic
         async function startStreaming() {
+            // Clears previous answer on start
+            fullAnswer = ""; spokenText = ""; answerText.textContent = ""; synthesis.cancel();
+            
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
                 globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -174,21 +233,13 @@
                 };
                 voiceBtn.classList.add('listening');
                 statusText.textContent = "LISTENING...";
-                // Clear previous answer on new speech
-                fullAnswer = "";
-                answerText.textContent = ""; 
-            } catch (err) {
-                console.error(err);
-                alert("Microphone denied");
-            }
+            } catch (err) { alert("Microphone denied"); }
         }
 
         function stopStreaming() {
             if (globalStream) {
                 globalStream.getTracks().forEach(track => track.stop());
-                input.disconnect();
-                processor.disconnect();
-                audioContext.close();
+                input.disconnect(); processor.disconnect(); audioContext.close();
                 voiceBtn.classList.remove('listening');
                 statusText.textContent = "PROCESSING...";
             }
@@ -209,35 +260,36 @@
             else { stopStreaming(); isRecording = false; }
         });
 
-        // Manual Submit Logic
         document.getElementById('submitBtn').addEventListener('click', async () => {
             const query = queryInput.value;
             if(!query) return;
             
-            fullAnswer = "";
-            answerText.textContent = "";
+            fullAnswer = ""; spokenText = ""; answerText.textContent = "";
             responseSection.classList.remove('hidden');
             statusText.textContent = "MANUAL QUERY SENT...";
 
-            const res = await fetch('/ask', {
+            await fetch('/ask', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({query: query})
             });
         });
 
-        // Design
-        gsap.registerPlugin(ScrollTrigger);
-        const lenis = new Lenis({ duration: 1.2, smooth: true });
-        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
-        requestAnimationFrame(raf);
-        
-        gsap.to(".chat-container", { y: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.5 });
-        
-        const toggle = document.getElementById('themeToggle');
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
         const html = document.documentElement;
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) html.classList.add('dark');
-        toggle.addEventListener('click', () => { html.classList.toggle('dark'); localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light'; });
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else { html.classList.remove('dark'); }
+        
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        // Animations
+        gsap.registerPlugin(ScrollTrigger);
+        gsap.to(".chat-container", { y: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.5 });
     </script>
 </body>
 </html>
