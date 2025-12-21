@@ -48,13 +48,32 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 thread_manager = None
 
+def clear_system_queues():
+    """Helper to clear all queues to prevent stale answers"""
+    if not thread_manager: return
+    
+    queues_to_clear = [
+        QUEUES["asr_to_process"], 
+        QUEUES["process_to_rag"], 
+        QUEUES["rag_to_llm"], 
+        QUEUES["ui_events"] # Critical for removing old text
+    ]
+    
+    for q_name in queues_to_clear:
+        q = thread_manager.get_queue(q_name)
+        if q:
+            with q.mutex:
+                q.queue.clear()
+    logger.info("♻️ System Queues Cleared for new input")
+
 def bridge_ui_events():
     global thread_manager
     ui_queue = thread_manager.get_queue(QUEUES["ui_events"])
     logger.info("BRIDGE: UI Event Bridge Started")
     while True:
         try:
-            data = ui_queue.get(timeout=0.1)
+            # Faster polling for speed
+            data = ui_queue.get(timeout=0.01) 
             if data['type'] == 'transcript':
                 socketio.emit('user_transcript', {'text': data['text']})
             elif data['type'] == 'llm_token':
@@ -135,10 +154,25 @@ def get_companies():
         logger.error(f"Error getting companies: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/delete_companies', methods=['POST'])
+def delete_companies():
+    try:
+        data = request.json
+        companies_to_delete = data.get('companies', [])
+        if not companies_to_delete:
+            return jsonify({"status": "error", "message": "No companies selected"}), 400
+        chroma_client = chromadb.PersistentClient(path=SYSTEM['vector_db_path'])
+        collection = chroma_client.get_or_create_collection(name="company_documents")
+        for company in companies_to_delete:
+            collection.delete(where={"company_name": company})
+        return jsonify({"status": "success", "message": f"Deleted {len(companies_to_delete)} companies"})
+    except Exception as e:
+        logger.error(f"Deletion failed: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/upload_pdf', methods=['POST'])
 def upload_pdf():
     global embedding_model
-    
     try:
         if 'pdf' not in request.files:
             return jsonify({"status": "error", "message": "No file uploaded"}), 400
@@ -149,6 +183,9 @@ def upload_pdf():
         email = request.form.get('email', '').strip()
         ocr_mode = request.form.get('ocr_mode', 'cpu') 
         
+        if not company_name or not product_name:
+            return jsonify({"status": "error", "message": "Company/Product Name required"}), 400
+            
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_filename = f"{company_name}_{timestamp}_{filename}"
@@ -157,37 +194,28 @@ def upload_pdf():
         
         logger.info(f"Processing PDF: {unique_filename} [Mode: {ocr_mode}]")
 
-        # 1. OCR
         full_text = extract_text_from_pdf(filepath, mode=ocr_mode)
         if not full_text or not full_text.strip():
             return jsonify({"status": "error", "message": "OCR found no text"}), 400
 
-        # 2. Init Embeddings
         if embedding_model is None:
             logger.info("Loading Sentence Transformer...")
             embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
             logger.info("Sentence Transformer Loaded")
 
-        # 3. Setup DB
-        logger.info("Connecting to Vector Database (ChromaDB)...")
         try:
             chroma_client = chromadb.PersistentClient(path=SYSTEM['vector_db_path'])
             collection = chroma_client.get_or_create_collection(name="company_documents")
-            logger.info("✅ Database Connected")
         except Exception as e:
-            logger.error(f"❌ Database Connection Failed: {e}")
             return jsonify({"status": "error", "message": f"DB Error: {str(e)}"}), 500
         
-        # 4. Optimized Chunking (FIXED INFINITE LOOP)
         chunk_size = 500
         overlap = 50
         step = chunk_size - overlap
         chunks = []
         
-        # Using simple range logic prevents infinite loops at end of file
         for i in range(0, len(full_text), step):
             chunk_content = full_text[i : i + chunk_size].strip()
-            
             if chunk_content:
                 chunks.append({
                     "content": chunk_content,
@@ -202,24 +230,21 @@ def upload_pdf():
                 })
         
         ids, docs, metas, embs = [], [], [], []
-        logger.info(f"Generating Fast Embeddings for {len(chunks)} chunks...")
+        logger.info(f"Generating Embeddings for {len(chunks)} chunks...")
         
-        # 5. Batch Embeddings
         batch_size = 8 
         chunk_texts = [c["content"] for c in chunks]
         
         for i in range(0, len(chunk_texts), batch_size):
             batch = chunk_texts[i:i + batch_size]
             batch_embeddings = embedding_model.encode(batch).tolist()
-            
             for j, emb in enumerate(batch_embeddings):
                 global_idx = i + j
                 ids.append(f"{company_name}_{timestamp}_{global_idx}")
                 docs.append(chunks[global_idx]["content"])
                 metas.append(chunks[global_idx]["metadata"])
                 embs.append(emb)
-            
-            logger.info(f"   ...embedded batch {i//batch_size + 1}/{(len(chunks)//batch_size)+1}")
+            logger.info(f"   ...embedded batch {i//batch_size + 1}")
 
         if ids:
             collection.add(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
@@ -240,6 +265,9 @@ def ask():
     data = request.json
     query = data.get('query', '').strip()
     if not query: return jsonify({"status": "error"}), 400
+    
+    # CLEAR QUEUES to remove old context/answers
+    clear_system_queues()
     
     if thread_manager:
         q = thread_manager.get_queue(QUEUES["asr_to_process"])
