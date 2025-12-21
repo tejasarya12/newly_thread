@@ -10,7 +10,7 @@ uploads : empty folder
 in utils : __init.py__ , model_loader.py
 vector_db : empty folder
 
-download_vosk_model.py
+
 app_threaded.py
 config_threaded.py
 ocr_processor.py
