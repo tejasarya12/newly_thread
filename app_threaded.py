@@ -1,6 +1,5 @@
 """
 Main Application - Real-Time Voice AI Assistant
-Optimized for CPU Embedding Speed
 """
 import logging
 import signal
@@ -20,7 +19,7 @@ from ollama import Client
 # Lazy Load Embeddings
 try:
     from sentence_transformers import SentenceTransformer
-    embedding_model = None # Loaded on first request
+    embedding_model = None 
 except ImportError:
     embedding_model = None
 
@@ -170,16 +169,25 @@ def upload_pdf():
             logger.info("Sentence Transformer Loaded")
 
         # 3. Setup DB
-        chroma_client = chromadb.PersistentClient(path=SYSTEM['vector_db_path'])
-        collection = chroma_client.get_or_create_collection(name="company_documents")
+        logger.info("Connecting to Vector Database (ChromaDB)...")
+        try:
+            chroma_client = chromadb.PersistentClient(path=SYSTEM['vector_db_path'])
+            collection = chroma_client.get_or_create_collection(name="company_documents")
+            logger.info("✅ Database Connected")
+        except Exception as e:
+            logger.error(f"❌ Database Connection Failed: {e}")
+            return jsonify({"status": "error", "message": f"DB Error: {str(e)}"}), 500
         
-        # 4. Optimized Chunking
-        chunk_size = 500 # Smaller chunks for better speed
+        # 4. Optimized Chunking (FIXED INFINITE LOOP)
+        chunk_size = 500
+        overlap = 50
+        step = chunk_size - overlap
         chunks = []
-        start = 0
-        while start < len(full_text):
-            end = min(start + chunk_size, len(full_text))
-            chunk_content = full_text[start:end].strip()
+        
+        # Using simple range logic prevents infinite loops at end of file
+        for i in range(0, len(full_text), step):
+            chunk_content = full_text[i : i + chunk_size].strip()
+            
             if chunk_content:
                 chunks.append({
                     "content": chunk_content,
@@ -192,13 +200,11 @@ def upload_pdf():
                         "chunk_index": len(chunks)
                     }
                 })
-            start = end - 50 # Smaller overlap
         
         ids, docs, metas, embs = [], [], [], []
-        logger.info(f"Generating Embeddings for {len(chunks)} chunks...")
+        logger.info(f"Generating Fast Embeddings for {len(chunks)} chunks...")
         
-        # 5. Batch Embeddings (The Speed Fix)
-        # Process in smaller batches to keep UI responsive
+        # 5. Batch Embeddings
         batch_size = 8 
         chunk_texts = [c["content"] for c in chunks]
         
@@ -213,7 +219,6 @@ def upload_pdf():
                 metas.append(chunks[global_idx]["metadata"])
                 embs.append(emb)
             
-            # Log progress
             logger.info(f"   ...embedded batch {i//batch_size + 1}/{(len(chunks)//batch_size)+1}")
 
         if ids:
