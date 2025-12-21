@@ -18,6 +18,10 @@ ocr_processor.py
 
 <h1>2.to run exicute :</h1>
 
-.\venv_new\Scripts\activate 
- cd "d:\ai orch thread"; .\venv_new\Scripts\activate; cd "ai-orch-thread"; python .\config_threaded.py
- cd "d:\ai orch thread"; .\venv_new\Scripts\activate; cd "ai-orch-thread"; python app_threaded.py   
+python -m venv venv
+.\venv\Scripts\activate 
+pip install -r requirements.txt
+
+
+ cd "d:\ai orch thread"; .\venv\Scripts\activate; cd "ai-orch-thread"; python .\config_threaded.py
+ cd "d:\ai orch thread"; .\venv\Scripts\activate; cd "ai-orch-thread"; python app_threaded.py   
