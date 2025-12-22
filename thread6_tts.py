@@ -1,7 +1,122 @@
 """
+Thread 6: TTS (Kokoro)
+High-quality, Human-like speech synthesis
+"""
+import logging
+import queue
+import io
+import wave
+import numpy as np
+import soundfile as sf
+
+# Try importing Kokoro
+try:
+    from kokoro_onnx import Kokoro
+    KOKORO_AVAILABLE = True
+except ImportError:
+    KOKORO_AVAILABLE = False
+
+from config_threaded import THREADS, MODELS
+
+logger = logging.getLogger("Thread-6-TTS")
+
+class KokoroTTSThread:
+    def __init__(self, input_queue, output_queue, shutdown_event):
+        self.input_queue = input_queue
+        self.output_queue = output_queue
+        self.shutdown_event = shutdown_event
+        
+        self.model_path = MODELS["tts"]["model_path"]
+        self.voices_path = MODELS["tts"]["voices_path"]
+        self.voice_name = MODELS["tts"]["voice_name"]
+        self.kokoro = None
+        
+    def load_model(self):
+        if not KOKORO_AVAILABLE:
+            logger.error("Kokoro not installed. Run: pip install kokoro-onnx soundfile")
+            return
+
+        try:
+            logger.info(f"Loading Kokoro TTS: {self.model_path}")
+            self.kokoro = Kokoro(self.model_path, self.voices_path)
+            logger.info(f"✅ Kokoro Ready (Voice: {self.voice_name})")
+        except Exception as e:
+            logger.error(f"Failed to load Kokoro: {e}")
+            self.kokoro = None
+
+    def synthesize_stream(self, text):
+        if not self.kokoro:
+            return
+
+        try:
+            # Generate Audio (Returns raw samples, sample_rate)
+            samples, sample_rate = self.kokoro.create_audio(
+                text, 
+                self.voice_name, 
+                speed=1.0, 
+                lang="en-us"
+            )
+            
+            # Convert float32 numpy array to int16 PCM bytes for playback
+            # Scale -1.0 to 1.0 -> -32767 to 32767
+            audio_int16 = (samples * 32767).astype(np.int16)
+            
+            # Create WAV container in memory
+            with io.BytesIO() as wav_buffer:
+                with wave.open(wav_buffer, "wb") as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2) # 2 bytes for int16
+                    wav_file.setframerate(sample_rate)
+                    wav_file.writeframes(audio_int16.tobytes())
+                
+                audio_data = wav_buffer.getvalue()
+                
+                # Send to playback thread
+                self.output_queue.put({
+                    "type": "audio_chunk",
+                    "data": audio_data
+                })
+                logger.info(f"Synthesized: '{text[:20]}...'")
+
+        except Exception as e:
+            logger.error(f"Synthesis failed: {e}")
+
+    def run(self):
+        self.load_model()
+        
+        while not self.shutdown_event.is_set():
+            try:
+                item = self.input_queue.get(timeout=0.1)
+                
+                if item == "<END_OF_TURN>":
+                    continue 
+                
+                if isinstance(item, str) and item.strip():
+                    # Filter out purely non-verbal strings to save time
+                    if any(c.isalnum() for c in item):
+                        self.synthesize_stream(item)
+                    
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"TTS Error: {e}")
+
+def tts_thread_main(manager, input_queue, output_queue, shutdown_event):
+    thread = KokoroTTSThread(
+        input_queue=input_queue,
+        output_queue=output_queue,
+        shutdown_event=shutdown_event
+    )
+    thread.run()
+
+
+
+
+
+"""
 Thread 6: Streaming TTS (Piper)
 Converts LLM text stream into audio bytes immediately.
-"""
+
 import logging
 import queue
 import wave
@@ -218,6 +333,7 @@ def tts_thread_main(manager):
         shutdown_event=manager.shutdown_event
     )
     thread.run()
+
 
 
 """
