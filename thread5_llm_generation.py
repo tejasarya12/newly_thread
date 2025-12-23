@@ -26,9 +26,10 @@ def llm_generation_thread_main(manager, input_queue, output_queue, shutdown_even
             # Prevent Hallucination Prompt
             if context:
                 system_prompt = (
-                    "You are a strict product support AI. "
-                    "Use ONLY the provided context to answer the user's question. "
-                    "If the answer is not in the context, say 'I cannot find that information in the registered documents.' "
+
+
+                    "You are a helpful assistant. Use the provided Context to answer the user's Question. "
+                    "If the answer isn't perfect, just give the best summary you can based on the Context.\n"
                     f"Context:\n{context}"
                 )
             else:
@@ -72,4 +73,5 @@ def llm_generation_thread_main(manager, input_queue, output_queue, shutdown_even
         except queue.Empty:
             continue
         except Exception as e:
+
             logger.error(f"LLM Error: {e}")
